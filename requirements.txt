@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+websockets
+aiosqlite
+passlib
+bcrypt
