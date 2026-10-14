@@ -791,7 +791,7 @@ html = """
                     
                     if (!chatHistories[group_id]) chatHistories[group_id] = [];
                     
-                    const ws = new WebSocket(`ws://${location.host}/ws/${group_id}/${globalAuthUsername}?token=${data.token}`);
+                    const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/${group_id}/${globalAuthUsername}?token=${data.token}`);
                     activeSockets[group_id] = ws;
 
                     ws.onmessage = async function(event) {

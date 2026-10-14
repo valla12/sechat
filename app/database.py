@@ -1,3 +1,4 @@
+import asyncio
 import aiosqlite
 import bcrypt
 
@@ -40,7 +41,7 @@ async def init_db():
         await db.commit()
 
 async def create_user(username: str, password: str):
-    hashed = hash_password(password)
+    hashed = await asyncio.to_thread(hash_password, password)
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed))
         await db.commit()
@@ -51,10 +52,10 @@ async def verify_user(username: str, password: str):
         row = await cursor.fetchone()
         if row is None:
             return False
-        return verify_password(password, row[0])
+        return await asyncio.to_thread(verify_password, password, row[0])
 
 async def create_group(group_id: str, group_name: str, password: str):
-    hashed_password = hash_password(password)
+    hashed_password = await asyncio.to_thread(hash_password, password)
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             "INSERT INTO groups (group_id, group_name, password) VALUES (?, ?, ?)",
@@ -68,7 +69,7 @@ async def verify_group(group_id: str, password: str):
         row = await cursor.fetchone()
         if row is None:
             return False
-        return verify_password(password, row[0])
+        return await asyncio.to_thread(verify_password, password, row[0])
 
 async def save_message(group_id: str, username: str, content: str):
     async with aiosqlite.connect(DB_NAME) as db:
