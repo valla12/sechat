@@ -24,7 +24,7 @@ html = """
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="UTF-8">
+        <meta charset="UTF-8">  
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>sechat</title>
         <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -105,6 +105,10 @@ html = """
             .navbar .nav-right strong { color: var(--text-main); }
             .btn-outline { padding: 8px 16px; background: transparent; border: 1px solid var(--border); border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-main); cursor: pointer; transition: all 0.2s; }
             .btn-outline:hover { background: var(--hover-bg); border-color: #cbd5e1; }
+            .btn-logout { border-color: #fca5a5; color: #ef4444; }
+            .btn-logout:hover { background: #fef2f2; border-color: #ef4444; color: #dc2626; }
+            .btn-leave-chat { background: transparent; border: none; color: var(--text-muted); font-size: 1.25rem; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }
+            .btn-leave-chat:hover { background: #fef2f2; color: #ef4444; }
 
             /* --- APP LAYOUT (SPLIT PANE) --- */
             #app-container {
@@ -343,6 +347,7 @@ html = """
                 <span>Logged in as <strong id="nav-username"></strong></span>
                 <button class="btn-outline" onclick="openModal('join')">Join Room</button>
                 <button class="btn-outline" onclick="openModal('create')">Create Room</button>
+                <button class="btn-outline btn-logout" onclick="handleLogout()">Sign Out</button>
             </div>
         </nav>
 
@@ -370,7 +375,8 @@ html = """
                         <h2 id="ws-group">Group Name</h2>
                         <div style="display: flex; gap: 10px;">
                             <button class="btn-outline" onclick="showMembers()">👥 Members</button>
-                            <button class="btn-clear-chat" onclick="clearChat()">Clear DB History</button>
+                            <button class="btn-outline" onclick="leaveChat(null, currentGroupId)">Leave Room</button>
+                            <button class="btn-clear-chat" onclick="clearChat()">Remove Chat History</button>
                         </div>
                     </div>
 
@@ -446,12 +452,30 @@ html = """
             var currentGroupId = "";
             var globalAuthUsername = "";
             let currentCryptoKey = null;
-            let savedChats = JSON.parse(localStorage.getItem('saved_chats')) || [];
+            let savedChats = [];
             
             // Multi-socket state
             let activeSockets = {}; // group_id -> WebSocket
             let chatHistories = {}; // group_id -> Array of messages
             let unreadCounts = {};  // group_id -> Int
+
+            function loadUserChats() {
+                if (!globalAuthUsername) {
+                    savedChats = [];
+                    return;
+                }
+                try {
+                    const raw = localStorage.getItem(`saved_chats_${globalAuthUsername}`);
+                    savedChats = raw ? JSON.parse(raw) : [];
+                } catch (e) {
+                    savedChats = [];
+                }
+            }
+
+            function persistUserChats() {
+                if (!globalAuthUsername) return;
+                localStorage.setItem(`saved_chats_${globalAuthUsername}`, JSON.stringify(savedChats));
+            }
 
             function arrayBufferToBase64(buffer) {
                 let binary = '';
@@ -495,6 +519,8 @@ html = """
             }
 
             window.addEventListener('DOMContentLoaded', () => {
+                // Clear any legacy un-scoped saved_chats
+                localStorage.removeItem('saved_chats');
                 const savedUsername = localStorage.getItem('global_auth_username');
                 if (savedUsername) {
                     document.getElementById('globalUsernameInput').value = savedUsername;
@@ -551,14 +577,33 @@ html = """
                     });
                     const data = await res.json();
                     if (data.success) {
+                        // Close any existing sockets before switching user
+                        for (const gid in activeSockets) {
+                            try { activeSockets[gid].close(); } catch(e) {}
+                        }
+                        activeSockets = {};
+                        chatHistories = {};
+                        unreadCounts = {};
+                        currentGroupId = "";
+                        currentCryptoKey = null;
+
+                        // Legacy cleanup
+                        localStorage.removeItem('saved_chats');
+
                         localStorage.setItem('global_auth_username', username);
                         globalAuthUsername = username;
+
+                        // Load chats exclusively saved for this user
+                        loadUserChats();
+
                         document.getElementById("global-auth-section").style.display = "none";
                         document.getElementById("top-navbar").style.display = "flex";
                         document.getElementById("app-container").style.display = "flex";
                         document.getElementById("nav-username").textContent = username;
+                        document.getElementById("chat-placeholder").style.display = "flex";
+                        document.getElementById("active-chat").style.display = "none";
                         
-                        // Boot up all sockets in the background!
+                        // Boot up all sockets in the background for this user's joined rooms only!
                         for (const chat of savedChats) {
                             connectSocket(chat.group_id, chat.password);
                         }
@@ -568,6 +613,31 @@ html = """
                         statusEl.textContent = data.message;
                     }
                 } catch (err) { statusEl.style.color = "#f87171"; statusEl.textContent = "Error signing in."; }
+            }
+
+            function handleLogout() {
+                for (const gid in activeSockets) {
+                    try { activeSockets[gid].close(); } catch(e) {}
+                }
+                activeSockets = {};
+                chatHistories = {};
+                unreadCounts = {};
+                savedChats = [];
+                currentGroupId = "";
+                globalAuthUsername = "";
+                currentCryptoKey = null;
+
+                localStorage.removeItem('global_auth_username');
+
+                document.getElementById("top-navbar").style.display = "none";
+                document.getElementById("app-container").style.display = "none";
+                document.getElementById("active-chat").style.display = "none";
+                document.getElementById("chat-placeholder").style.display = "flex";
+                document.getElementById("messages-container").innerHTML = "";
+                document.getElementById("global-auth-section").style.display = "flex";
+                document.getElementById("globalPasswordInput").value = "";
+                document.getElementById("signinStatus").textContent = "";
+                document.getElementById("signupStatus").textContent = "";
             }
 
             // --- MODAL LOGIC ---
@@ -630,11 +700,37 @@ html = """
             }
 
             function saveChat(group_id, password, title) {
-                if (!savedChats.find(c => c.group_id === group_id)) {
-                    savedChats.push({ group_id, password, title });
-                    localStorage.setItem('saved_chats', JSON.stringify(savedChats));
-                    renderSidebar();
+                if (!globalAuthUsername) return;
+                const existingIndex = savedChats.findIndex(c => c.group_id === group_id);
+                if (existingIndex >= 0) {
+                    savedChats[existingIndex].password = password;
+                    if (title) savedChats[existingIndex].title = title;
+                } else {
+                    savedChats.push({ group_id, password, title: title || group_id });
                 }
+                persistUserChats();
+                renderSidebar();
+            }
+
+            function leaveChat(event, group_id) {
+                if (event) event.stopPropagation();
+                if (!group_id) return;
+                if (!confirm(`Are you sure you want to leave this room?`)) return;
+                if (activeSockets[group_id]) {
+                    try { activeSockets[group_id].close(); } catch(e) {}
+                    delete activeSockets[group_id];
+                }
+                delete chatHistories[group_id];
+                delete unreadCounts[group_id];
+                savedChats = savedChats.filter(c => c.group_id !== group_id);
+                persistUserChats();
+                if (currentGroupId === group_id) {
+                    currentGroupId = "";
+                    currentCryptoKey = null;
+                    document.getElementById("active-chat").style.display = "none";
+                    document.getElementById("chat-placeholder").style.display = "flex";
+                }
+                renderSidebar();
             }
 
             async function saveAndConnect(group_id, password, title) {
@@ -672,7 +768,10 @@ html = """
                                 <h4>${escapeHTML(chat.title || chat.group_id)}</h4>
                                 <p>${escapeHTML(chat.group_id)}</p>
                             </div>
-                            ${badgeHtml}
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                ${badgeHtml}
+                                <button class="btn-leave-chat" title="Leave room" onclick="leaveChat(event, '${escapeHTML(chat.group_id)}')">&times;</button>
+                            </div>
                         </div>
                     `;
                     list.appendChild(item);
@@ -807,7 +906,7 @@ html = """
 
             async function clearChat() {
                 if (!currentGroupId) return;
-                if (!confirm("Are you sure you want to wipe all chat history for this group from SQLite?")) return;
+                if (!confirm("Are you sure you want to remove all chat history for this group?")) return;
                 try {
                     const res = await fetch('/clear_chat', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },

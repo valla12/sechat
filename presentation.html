@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SeChat Architecture - Presentation Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --accent-teal: #14b8a6;
+      --accent-blue: #3b82f6;
+      --accent-red: #f87171;
+      --accent-purple: #a855f7;
+      --accent-amber: #f59e0b;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+    }
+
+    .slide-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .slide {
+      position: absolute;
+      width: 90vw;
+      max-width: 1200px;
+      height: 82vh;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 40px 50px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(20px) scale(0.98);
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0) scale(1);
+    }
+
+    .category-tag {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-teal);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 24px;
+      line-height: 1.2;
+    }
+
+    /* Controls & Navigation */
+    .nav-controls {
+      position: fixed;
+      bottom: 24px;
+      right: 32px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .nav-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-btn:hover {
+      background: var(--accent-teal);
+      color: #000;
+      border-color: var(--accent-teal);
+    }
+
+    .slide-indicator {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-right: 12px;
+      font-weight: 600;
+    }
+
+    /* Slide specific layouts */
+    .title-slide {
+      justify-content: center;
+      border-left: 8px solid var(--accent-teal);
+    }
+
+    .title-slide h1 {
+      font-size: 3.2rem;
+      margin-bottom: 16px;
+    }
+
+    .subtitle {
+      font-size: 1.5rem;
+      color: var(--accent-teal);
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    .desc {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 800px;
+      line-height: 1.6;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+      flex: 1;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+      flex: 1;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      gap: 20px;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--bg-dark);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card h3 {
+      font-size: 1.25rem;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card ul {
+      list-style: none;
+    }
+
+    .card li {
+      position: relative;
+      padding-left: 20px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      line-height: 1.5;
+    }
+
+    .card li::before {
+      content: "•";
+      position: absolute;
+      left: 0;
+      color: var(--accent-teal);
+      font-weight: bold;
+    }
+
+    .card.danger li::before { color: var(--accent-red); }
+    .card.blue li::before { color: var(--accent-blue); }
+
+    /* Flow diagram representation */
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-dark);
+      border: 1px solid var(--card-border);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+
+    .flow-step {
+      background: var(--card-bg);
+      border: 1px solid var(--accent-teal);
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .flow-arrow {
+      color: var(--text-muted);
+      font-weight: bold;
+    }
+
+    /* Table styles */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 0.95rem;
+    }
+
+    th {
+      background: var(--bg-dark);
+      color: var(--accent-teal);
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .badge-red { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); }
+    .badge-green { background: rgba(20, 184, 166, 0.15); color: var(--accent-teal); }
+
+  </style>
+</head>
+<body>
+
+<div class="slide-container">
+
+  <!-- SLIDE 1 -->
+  <div class="slide title-slide active" id="slide-1">
+    <div class="category-tag">SECHAT ARCHITECTURE</div>
+    <h1>SeChat Real-Time Platform</h1>
+    <div class="subtitle">Current vs. Proposed Architecture & Scalability Blueprint</div>
+    <div class="desc">
+      A technical breakdown of transforming SeChat from a single-node prototype into a resilient, distributed, enterprise-ready real-time messaging architecture.
+    </div>
+  </div>
+
+  <!-- SLIDE 2 -->
+  <div class="slide" id="slide-2">
+    <div class="category-tag">OVERVIEW</div>
+    <h1>Executive Summary: Evolution of SeChat</h1>
+    <div class="grid-3">
+      <div class="card">
+        <h3 style="color: var(--accent-red);">⚠️ Current Limitations</h3>
+        <ul>
+          <li>Monolithic FastAPI process with in-memory connection manager.</li>
+          <li>SQLite file locks under concurrent write operations.</li>
+          <li>Cannot scale beyond a single server instance.</li>
+          <li>Loss of connections during network hiccups.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent-teal);">🚀 Proposed System</h3>
+        <ul>
+          <li>Decoupled Pub/Sub Broker for cross-process broadcasting.</li>
+          <li>Central Connection Registry/Pool for multi-worker clusters.</li>
+          <li>Integrated Crypto Layer (AES-GCM + KDF) for security.</li>
+          <li>Monitoring & Rate Limiting guardrails for production stability.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent-blue);">📈 Key Impact</h3>
+        <ul>
+          <li>Infinite Horizontal Scalability (Add WS nodes dynamically).</li>
+          <li>High Availability & Reconnect Resilience.</li>
+          <li>Enterprise-grade Security (E2EE/MLS roadmap).</li>
+          <li>Protection against DDoS and message flooding.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 -->
+  <div class="slide" id="slide-3">
+    <div class="category-tag">BASELINE ANALYSIS</div>
+    <h1>Current System Architecture</h1>
+    <div class="flow-diagram">
+      <div class="flow-step">Browser Client</div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">HTTP REST (FastAPI)</div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">Token Check</div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">WebSocket Server</div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">Connection Manager</div>
+      <div class="flow-arrow">➔</div>
+      <div class="flow-step">SQLite</div>
+    </div>
+    <div class="card danger" style="flex: 1;">
+      <h3 style="color: var(--accent-red);">Critical Architectural Bottlenecks</h3>
+      <ul>
+        <li><strong>Tightly Coupled Monolith:</strong> HTTP REST, authentication, and WebSocket handling run within a single process.</li>
+        <li><strong>In-Memory State Lock:</strong> Active connections live exclusively in Python process RAM. Running 2 worker processes causes lost messages.</li>
+        <li><strong>Database Concurrency Barrier:</strong> Synchronous SQLite writes create lock contention during concurrent chat surges.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 -->
+  <div class="slide" id="slide-4">
+    <div class="category-tag">PROPOSED MODEL</div>
+    <h1>Proposed System & Architecture</h1>
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color: var(--accent-teal);">Decoupled Component Blueprint</h3>
+        <ul>
+          <li><strong>Clients:</strong> Browser/Mobile connecting via REST & WS Gateways.</li>
+          <li><strong>REST API (Auth + Room):</strong> Dedicated stateless service for auth & metadata.</li>
+          <li><strong>WebSocket Gateway:</strong> High-concurrency edge nodes handling TCP framing.</li>
+          <li><strong>Connection Pool / Registry:</strong> Central session & worker route tracker.</li>
+          <li><strong>Pub/Sub Broker:</strong> Redis-based event bus for multi-node messaging.</li>
+          <li><strong>Crypto Layer:</strong> AES-GCM + KDF payload encryption module.</li>
+        </ul>
+      </div>
+      <div class="card blue">
+        <h3 style="color: var(--accent-blue);">Core Architecture Enhancements</h3>
+        <ul>
+          <li><strong>Pub/Sub Dissemination:</strong> Decouples message broadcasting from individual WS server memory.</li>
+          <li><strong>Connection Registry & Pool:</strong> Supports multi-worker clusters & handles transparent client reconnects.</li>
+          <li><strong>Application-Layer Multicast:</strong> Logical group delivery model ensuring zero unnecessary message fanout.</li>
+          <li><strong>Crypto Evolution:</strong> Key management framework ready to step up to MLS / Double Ratchet protocols.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 -->
+  <div class="slide" id="slide-5">
+    <div class="category-tag">COMPARISON MATRIX</div>
+    <h1>Head-to-Head Architectural Comparison</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>Current System (Baseline)</th>
+          <th>Proposed System (Target)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Architecture</strong></td>
+          <td><span class="badge badge-red">Single-Process Monolith</span></td>
+          <td><span class="badge badge-green">Decoupled Microservices</span></td>
+        </tr>
+        <tr>
+          <td><strong>Scalability</strong></td>
+          <td>Vertical only (Single node max)</td>
+          <td>Horizontal (Multi-worker WS Gateways + Pub/Sub)</td>
+        </tr>
+        <tr>
+          <td><strong>State Sync</strong></td>
+          <td>In-memory Python ConnectionManager</td>
+          <td>Central Connection Registry + Redis Pub/Sub</td>
+        </tr>
+        <tr>
+          <td><strong>Security</strong></td>
+          <td>Transport-layer HTTPS/WSS</td>
+          <td>Payload Crypto Layer (AES-GCM + KDF / MLS)</td>
+        </tr>
+        <tr>
+          <td><strong>Resilience</strong></td>
+          <td>Connection drops lose active state</td>
+          <td>Connection Pool Reconnects + Rate Limiting</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SLIDE 6 -->
+  <div class="slide" id="slide-6">
+    <div class="category-tag">BENEFITS</div>
+    <h1>Key Technological Pillar Advantages</h1>
+    <div class="grid-4">
+      <div class="card">
+        <h3 style="color: var(--accent-teal);">1. Low Latency Fanout</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">Pub/Sub backbone achieves sub-20ms message routing across thousands of simultaneous channel subscribers.</p>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent-blue);">2. Zero Downtime Scaling</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">Add or remove WebSocket Gateway instances dynamically to match real-time traffic spikes effortlessly.</p>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent-purple);">3. Cryptographic Security</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">AES-GCM payload encryption ensures total message privacy across untrusted network hops.</p>
+      </div>
+      <div class="card">
+        <h3 style="color: var(--accent-amber);">4. Operational Health</h3>
+        <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">Integrated rate limits prevent spam attacks while real-time metrics provide system-wide visibility.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 -->
+  <div class="slide" id="slide-7">
+    <div class="category-tag">SUMMARY</div>
+    <h1>Conclusion & Presentation Wrap-up</h1>
+    <div class="card" style="flex: 1; justify-content: center;">
+      <h3 style="color: var(--accent-teal); font-size: 1.5rem; margin-bottom: 20px;">Summary Value Proposition</h3>
+      <ul style="font-size: 1.1rem;">
+        <li style="margin-bottom: 16px;"><strong>Scalability:</strong> Transitions SeChat from single-node bottleneck to enterprise-ready horizontal scale.</li>
+        <li style="margin-bottom: 16px;"><strong>Reliability:</strong> Guarantees connection state retention through central registration and pool management.</li>
+        <li style="margin-bottom: 16px;"><strong>Security:</strong> Modern cryptographic foundation with clear roadmap toward end-to-end ratchet protocols.</li>
+      </ul>
+      <p style="margin-top: 24px; font-weight: 700; color: var(--accent-blue); font-size: 1.2rem;">Thank you! Open for Questions & Technical Discussion.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation controls -->
+<div class="nav-controls">
+  <span class="slide-indicator" id="slide-indicator">Slide 1 / 7</span>
+  <button class="nav-btn" onclick="prevSlide()">❮ Prev</button>
+  <button class="nav-btn" onclick="nextSlide()">Next ❯</button>
+</div>
+
+<script>
+  let currentSlide = 1;
+  const totalSlides = 7;
+
+  function showSlide(index) {
+    if (index < 1) index = 1;
+    if (index > totalSlides) index = totalSlides;
+
+    currentSlide = index;
+
+    document.querySelectorAll('.slide').forEach((s, idx) => {
+      s.classList.toggle('active', (idx + 1) === currentSlide);
+    });
+
+    document.getElementById('slide-indicator').innerText = `Slide ${currentSlide} / ${totalSlides}`;
+  }
+
+  function prevSlide() { showSlide(currentSlide - 1); }
+  function nextSlide() { showSlide(currentSlide + 1); }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+    if (e.key === 'ArrowLeft') prevSlide();
+  });
+</script>
+
+</body>
+</html>

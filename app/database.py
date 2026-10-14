@@ -92,3 +92,10 @@ async def clear_group_messages(group_id: str):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("DELETE FROM messages WHERE group_id = ?", (group_id,))
         await db.commit()
+
+async def clear_all_db():
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("DELETE FROM messages")
+        await db.execute("DELETE FROM groups")
+        await db.execute("DELETE FROM users")
+        await db.commit()
